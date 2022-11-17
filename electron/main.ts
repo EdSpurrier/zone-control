@@ -5,12 +5,36 @@ const { ipcMain } = require('electron')
 import { TitanCore } from 'titan-core'
 import { console, core } from './system/globals'
 
+// MODULES
+const udpServer = require('./utils/udp-server')
+const udpClient = require('./utils/udp-client')
+
 
 
 
 global.titanCore = new TitanCore();
 
 console.logError("Titan Console");
+
+
+
+//  UDP SERVER
+udpServer.setup(global.titanCore, 4003);
+
+// emits on new datagram msg
+udpServer.server.on('message',function(msg:string,info:any){
+    console.log('Data received from client : ' + msg.toString());
+    console.log('Received %d bytes from %s:%d\n',msg.length, info.address, info.port);
+    udpServer.close();
+});
+
+
+udpServer.start();
+
+//  UDP CLIENT
+udpClient.setup(global.titanCore);
+
+udpClient.send("Test Electron Send", 4004);
 
 
 let mainWindow: Electron.BrowserWindow | null;
@@ -68,10 +92,6 @@ ipcMain.on('anything-synchronous', (event, arg) => {
 
 app.whenReady().then(() => {
   createWindow();
-
-
-
-
 });
 
 ipcMain.on('get-display-info', (event, arg) => {
@@ -79,11 +99,17 @@ ipcMain.on('get-display-info', (event, arg) => {
   const display = displays.find((d) => d.bounds.x !== 0 || d.bounds.y !== 0) || displays[0];
   console.log("Gathering Display Info => Total = ", displays.length);
   event.reply('display-info', displays);
+  let sendData = [{
+    'display-data' : displays
+  }];
+  udpClient.send(JSON.stringify(sendData), 4004);
 })
 
 
 
-
+ipcMain.on('get-window', (event, arg) => {
+  udpClient.send("get-window", 4004);
+})
 
 
 ipcMain.on('get-windows-info', (event, arg) => {

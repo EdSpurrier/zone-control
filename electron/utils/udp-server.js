@@ -24,7 +24,7 @@ exports.start = () => {
 exports.close = () => {
     //emits after the socket is closed using socket.close();
     this.server.on('close',function(){
-        this.console.logAction('Socket is closed!');
+        this.console.logAction('Socket is closed !');
     });
 }
 

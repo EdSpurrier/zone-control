@@ -56,6 +56,10 @@ const App = () => {
           ipcRenderer.send('get-windows-info', 'get')
         }}>Get Windows Info</button>
 
+        <button onClick={()=>{
+          ipcRenderer.send('get-window', 'get')
+        }}>GetWindow()</button>
+
       <table>
         <tr>
           <th>Id</th>

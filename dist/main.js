@@ -19,6 +19,77 @@ var console = global.titanConsole;
 
 /***/ }),
 
+/***/ "./electron/utils/udp-client.js":
+/*!**************************************!*\
+  !*** ./electron/utils/udp-client.js ***!
+  \**************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+var _this = this;
+var udp = __webpack_require__(/*! dgram */ "dgram");
+exports.client = udp.createSocket('udp4');
+var core = null;
+var console = null;
+exports.send = function (msg, port) {
+  var ip = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'localhost';
+  var errorMsg = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : "Send Failed";
+  var data = Buffer.from(msg);
+  _this.client.send(data, port, ip, function (error) {
+    if (error) {
+      client.close();
+      this.console.log("Send Error", errorMsg);
+    } else {
+      this.console.log(msg, ' => Sent.');
+    }
+  });
+};
+exports.setup = function (titanCore) {
+  _this.core = titanCore;
+  _this.console = titanCore.console;
+  _this.console.logProcessComplete("UDP Client Setup");
+};
+
+/***/ }),
+
+/***/ "./electron/utils/udp-server.js":
+/*!**************************************!*\
+  !*** ./electron/utils/udp-server.js ***!
+  \**************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+var _this = this;
+var udp = __webpack_require__(/*! dgram */ "dgram");
+var core = null;
+var console = null;
+var port = 0;
+
+// creating a udp server
+exports.server = udp.createSocket('udp4');
+
+// emits when any error occurs
+this.server.on('error', function (error) {
+  this.console.logError('Error: ' + error);
+  server.close();
+});
+exports.start = function () {
+  _this.server.bind(_this.port);
+  _this.console.logAction("Server Binded to " + _this.port);
+};
+exports.close = function () {
+  //emits after the socket is closed using socket.close();
+  _this.server.on('close', function () {
+    this.console.logAction('Socket is closed !');
+  });
+};
+exports.setup = function (titanCore, port) {
+  _this.core = titanCore;
+  _this.console = titanCore.console;
+  _this.port = port;
+  _this.console.logProcessComplete("UDP Server Setup");
+};
+
+/***/ }),
+
 /***/ "./node_modules/dotenv/lib/main.js":
 /*!*****************************************!*\
   !*** ./node_modules/dotenv/lib/main.js ***!
@@ -2231,6 +2302,7 @@ const dotenv_1 = __importDefault(__webpack_require__(/*! dotenv */ "./node_modul
 const meta_1 = __webpack_require__(/*! ./system/meta/meta */ "./node_modules/titan-core/titan-core/system/meta/meta.js");
 const TitanEventManager_js_1 = __webpack_require__(/*! ./utils/TitanEventManager.js */ "./node_modules/titan-core/titan-core/utils/TitanEventManager.js");
 const globals_1 = __webpack_require__(/*! ./system/globals */ "./node_modules/titan-core/titan-core/system/globals.js");
+const TitanConsole_1 = __webpack_require__(/*! ./utils/TitanConsole */ "./node_modules/titan-core/titan-core/utils/TitanConsole.js");
 dotenv_1.default.config();
 class TitanCore {
     constructor(options) {
@@ -2238,8 +2310,10 @@ class TitanCore {
             globals_1.console.logProcessComplete(this.constructor.name, 'Initiated');
         };
         globals_1.console.logProcessComplete(this.constructor.name, 'Constructed');
+        this.console = new TitanConsole_1.TitanConsole({});
         this.meta = new meta_1.Meta();
         this.eventManager = new TitanEventManager_js_1.TitanEventManager({});
+        this.hello = "Hi";
         this.init();
     }
 }
@@ -2477,6 +2551,17 @@ exports.TitanEventManager = TitanEventManager;
 
 /***/ }),
 
+/***/ "dgram":
+/*!************************!*\
+  !*** external "dgram" ***!
+  \************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("dgram");
+
+/***/ }),
+
 /***/ "electron":
 /*!***************************!*\
   !*** external "electron" ***!
@@ -2658,8 +2743,27 @@ var _require = __webpack_require__(/*! electron */ "electron"),
   ipcMain = _require.ipcMain;
 
 
+
+// MODULES
+var udpServer = __webpack_require__(/*! ./utils/udp-server */ "./electron/utils/udp-server.js");
+var udpClient = __webpack_require__(/*! ./utils/udp-client */ "./electron/utils/udp-client.js");
 global.titanCore = new titan_core__WEBPACK_IMPORTED_MODULE_3__.TitanCore();
 _system_globals__WEBPACK_IMPORTED_MODULE_4__.console.logError("Titan Console");
+
+//  UDP SERVER
+udpServer.setup(global.titanCore, 4003);
+
+// emits on new datagram msg
+udpServer.server.on('message', function (msg, info) {
+  _system_globals__WEBPACK_IMPORTED_MODULE_4__.console.log('Data received from client : ' + msg.toString());
+  _system_globals__WEBPACK_IMPORTED_MODULE_4__.console.log('Received %d bytes from %s:%d\n', msg.length, info.address, info.port);
+  udpServer.close();
+});
+udpServer.start();
+
+//  UDP CLIENT
+udpClient.setup(global.titanCore);
+udpClient.send("Test Electron Send", 4004);
 var mainWindow;
 function createWindow() {
   mainWindow = new electron__WEBPACK_IMPORTED_MODULE_0__.BrowserWindow({
@@ -2711,6 +2815,13 @@ ipcMain.on('get-display-info', function (event, arg) {
   }) || displays[0];
   _system_globals__WEBPACK_IMPORTED_MODULE_4__.console.log("Gathering Display Info => Total = ", displays.length);
   event.reply('display-info', displays);
+  var sendData = [{
+    'display-data': displays
+  }];
+  udpClient.send(JSON.stringify(sendData), 4004);
+});
+ipcMain.on('get-window', function (event, arg) {
+  udpClient.send("get-window", 4004);
 });
 ipcMain.on('get-windows-info', function (event, arg) {
 
