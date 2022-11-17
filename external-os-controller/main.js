@@ -10,6 +10,11 @@ var console = titanCore.console;
 console.logError(titanCore.hello);
 
 
+console.log("Consider creating TitanTunnel");
+console.log("TitanTunnel => set to and from ports on one app and then to and from on the other. make 2 apps talk to each other...");
+console.log("Or just finish TitanListeners and TitanEmitter/TitanAction...");
+
+
 //  UDP SERVER
 udpServer.setup(titanCore, 4004);
 
